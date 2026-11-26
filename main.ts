@@ -30,7 +30,26 @@ if (
   throw new Error('POSTS.json must be a JSON object with a string array "posts"');
 }
 
+// The competition reads 1 to 15 posts, all from one X account, each an
+// X status URL. Fail loudly here (instead of handing the grader a list
+// it will refuse) when the list breaks any of those rules.
+if (parsed.posts.length < 1 || parsed.posts.length > 15) {
+  throw new Error(`POSTS.json must list 1 to 15 posts, found ${parsed.posts.length}`);
+}
+const handles = new Set();
+for (const url of parsed.posts) {
+  const match = /^https:\/\/x\.com\/([A-Za-z0-9_]+)\/status\/(\d+)$/.exec(url);
+  if (!match) {
+    throw new Error(`not an X status URL: ${url}`);
+  }
+  handles.add(match[1]);
+}
+if (handles.size !== 1) {
+  throw new Error(`all posts must come from one X account, found ${[...handles].join(", ")}`);
+}
+
 await mkdir(outputDir, { recursive: true });
 await copyFile(source, target);
 // The grader collects outputs as another user: leave the file readable.
 await chmod(target, 0o644);
+console.log(`copied ${parsed.posts.length} posts from @${[...handles][0]} to ${target}`);
